@@ -26,9 +26,10 @@ variable "postgresql_admin_username" {
 }
 
 variable "postgresql_admin_password" {
-  description = "Administrator password for PostgreSQL server"
+  description = "Administrator password for PostgreSQL server. Leave empty to auto-generate a secure password."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "postgresql_database_name" {

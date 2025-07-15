@@ -8,7 +8,7 @@ managed_identity_name   = "your-existing-managed-identity-name"
 
 # PostgreSQL Configuration
 postgresql_admin_username = "sqladmin"
-postgresql_admin_password = "YourSecurePassword123!"
+# postgresql_admin_password = "YourSecurePassword123!"  # Leave commented to auto-generate
 postgresql_database_name  = "sonarqube"
 
 # Domain Configuration
