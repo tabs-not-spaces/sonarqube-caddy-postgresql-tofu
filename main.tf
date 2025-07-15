@@ -40,11 +40,11 @@ resource "azurerm_log_analytics_workspace" "main" {
 
 # PostgreSQL Flexible Server
 resource "azurerm_postgresql_flexible_server" "main" {
-  name                = "${var.project_name}-${var.environment}-psql-${random_id.postgresql_suffix.hex}"
-  resource_group_name = data.azurerm_resource_group.main.name
-  location            = data.azurerm_resource_group.main.location
-  version             = "13"
-
+  name                   = "${var.project_name}-${var.environment}-psql-${random_id.postgresql_suffix.hex}"
+  resource_group_name    = data.azurerm_resource_group.main.name
+  location               = data.azurerm_resource_group.main.location
+  version                = "13"
+  zone                   = 1
   administrator_login    = var.postgresql_admin_username
   administrator_password = local.postgresql_password
 
@@ -76,6 +76,82 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
   server_id        = azurerm_postgresql_flexible_server.main.id
   start_ip_address = "0.0.0.0"
   end_ip_address   = "0.0.0.0"
+}
+
+# Storage Account for SonarQube and Caddy
+resource "azurerm_storage_account" "sonarqube" {
+  name                     = "${substr(var.project_name, 0, 11)}${var.environment}sa${random_id.storage_suffix.hex}"
+  resource_group_name      = data.azurerm_resource_group.main.name
+  location                 = data.azurerm_resource_group.main.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  min_tls_version          = "TLS1_2"
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+# SonarQube storage shares
+resource "azurerm_storage_share" "sonarqube_conf" {
+  name               = "conf"
+  storage_account_id = azurerm_storage_account.sonarqube.id
+  quota              = 5 # 5GB for configuration
+}
+
+resource "azurerm_storage_share" "sonarqube_data" {
+  name               = "data"
+  storage_account_id = azurerm_storage_account.sonarqube.id
+  quota              = 50 # 50GB for data
+}
+
+resource "azurerm_storage_share" "sonarqube_logs" {
+  name               = "logs"
+  storage_account_id = azurerm_storage_account.sonarqube.id
+  quota              = 10 # 10GB for logs
+}
+
+resource "azurerm_storage_share" "sonarqube_extensions" {
+  name               = "extensions"
+  storage_account_id = azurerm_storage_account.sonarqube.id
+  quota              = 5 # 5GB for extensions/plugins
+}
+
+# Caddy storage shares
+resource "azurerm_storage_share" "caddy_config" {
+  name               = "caddy-config"
+  storage_account_id = azurerm_storage_account.sonarqube.id
+  quota              = 5 # 5GB for Caddy configuration
+}
+
+resource "azurerm_storage_share" "caddy_data" {
+  name               = "caddy-data"
+  storage_account_id = azurerm_storage_account.sonarqube.id
+  quota              = 5 # 5GB for Caddy data (certificates, etc.)
+}
+
+# Upload sonar.properties file to the conf share
+resource "azurerm_storage_share_file" "sonar_properties" {
+  name                 = "sonar.properties"
+  storage_share_id     = azurerm_storage_share.sonarqube_conf.url
+  source               = "${path.module}/sonar.properties"
+
+  depends_on = [azurerm_storage_share.sonarqube_conf]
+}
+
+# Upload Caddyfile to the Caddy config share
+resource "azurerm_storage_share_file" "caddyfile" {
+  name                 = "Caddyfile"
+  storage_share_id     = azurerm_storage_share.caddy_config.url
+  source               = "${path.module}/Caddyfile"
+
+  depends_on = [azurerm_storage_share.caddy_config]
+}
+
+# Random suffix for storage account naming
+resource "random_id" "storage_suffix" {
+  byte_length = 4
 }
 
 # Container Instance Group
@@ -113,6 +189,42 @@ resource "azurerm_container_group" "main" {
     secure_environment_variables = {
       SONAR_JDBC_PASSWORD = local.postgresql_password
     }
+
+    volume {
+      name                 = "sonarqube-conf"
+      mount_path           = "/opt/sonarqube/conf"
+      read_only            = false
+      storage_account_name = azurerm_storage_account.sonarqube.name
+      storage_account_key  = azurerm_storage_account.sonarqube.primary_access_key
+      share_name           = azurerm_storage_share.sonarqube_conf.name
+    }
+
+    volume {
+      name                 = "sonarqube-data"
+      mount_path           = "/opt/sonarqube/data"
+      read_only            = false
+      storage_account_name = azurerm_storage_account.sonarqube.name
+      storage_account_key  = azurerm_storage_account.sonarqube.primary_access_key
+      share_name           = azurerm_storage_share.sonarqube_data.name
+    }
+
+    volume {
+      name                 = "sonarqube-logs"
+      mount_path           = "/opt/sonarqube/logs"
+      read_only            = false
+      storage_account_name = azurerm_storage_account.sonarqube.name
+      storage_account_key  = azurerm_storage_account.sonarqube.primary_access_key
+      share_name           = azurerm_storage_share.sonarqube_logs.name
+    }
+
+    volume {
+      name                 = "sonarqube-extensions"
+      mount_path           = "/opt/sonarqube/extensions"
+      read_only            = false
+      storage_account_name = azurerm_storage_account.sonarqube.name
+      storage_account_key  = azurerm_storage_account.sonarqube.primary_access_key
+      share_name           = azurerm_storage_share.sonarqube_extensions.name
+    }
   }
 
   # Caddy container
@@ -133,8 +245,26 @@ resource "azurerm_container_group" "main" {
     }
 
     environment_variables = {
-      PUBLIC_DOMAIN = var.public_domain
+      PUBLIC_DOMAIN   = var.public_domain
       CADDY_LOG_LEVEL = "INFO"
+    }
+
+    volume {
+      name                 = "caddy-config"
+      mount_path           = "/etc/caddy"
+      read_only            = false
+      storage_account_name = azurerm_storage_account.sonarqube.name
+      storage_account_key  = azurerm_storage_account.sonarqube.primary_access_key
+      share_name           = azurerm_storage_share.caddy_config.name
+    }
+
+    volume {
+      name                 = "caddy-data"
+      mount_path           = "/data"
+      read_only            = false
+      storage_account_name = azurerm_storage_account.sonarqube.name
+      storage_account_key  = azurerm_storage_account.sonarqube.primary_access_key
+      share_name           = azurerm_storage_share.caddy_data.name
     }
   }
 
@@ -180,8 +310,7 @@ resource "azurerm_monitor_diagnostic_setting" "container_group" {
     category = "ContainerEvent"
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
-    enabled  = true
   }
 }
