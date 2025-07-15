@@ -133,18 +133,18 @@ resource "azurerm_storage_share" "caddy_data" {
 
 # Upload sonar.properties file to the conf share
 resource "azurerm_storage_share_file" "sonar_properties" {
-  name                 = "sonar.properties"
-  storage_share_id     = azurerm_storage_share.sonarqube_conf.url
-  source               = "${path.module}/sonar.properties"
+  name             = "sonar.properties"
+  storage_share_id = azurerm_storage_share.sonarqube_conf.url
+  source           = "${path.module}/sonar.properties"
 
   depends_on = [azurerm_storage_share.sonarqube_conf]
 }
 
 # Upload Caddyfile to the Caddy config share
 resource "azurerm_storage_share_file" "caddyfile" {
-  name                 = "Caddyfile"
-  storage_share_id     = azurerm_storage_share.caddy_config.url
-  source               = "${path.module}/Caddyfile"
+  name             = "Caddyfile"
+  storage_share_id = azurerm_storage_share.caddy_config.url
+  source           = "${path.module}/Caddyfile"
 
   depends_on = [azurerm_storage_share.caddy_config]
 }
@@ -162,7 +162,10 @@ resource "azurerm_container_group" "main" {
   ip_address_type     = "Public"
   dns_name_label      = "${var.project_name}-${var.environment}-${random_password.dns_suffix.result}"
   os_type             = "Linux"
-  restart_policy      = "Never"
+  restart_policy      = "OnFailure"
+
+  # Explicitly specify SKU to ensure consistent infrastructure
+  sku = "Standard"
 
   # SonarQube container
   container {
