@@ -86,6 +86,7 @@ resource "azurerm_container_group" "main" {
   ip_address_type     = "Public"
   dns_name_label      = "${var.project_name}-${var.environment}-${random_password.dns_suffix.result}"
   os_type             = "Linux"
+  restart_policy      = "Never"
 
   # SonarQube container
   container {
@@ -105,6 +106,8 @@ resource "azurerm_container_group" "main" {
       SONAR_WEB_HOST                  = "0.0.0.0"
       SONAR_WEB_PORT                  = "9000"
       SONAR_SEARCH_JAVAADDITIONALOPTS = "-Dnode.store.allow_mmap=false"
+      SONAR_LOG_LEVEL                 = "INFO"
+      SONAR_LOG_JSONOUTPUT            = "true"
     }
 
     secure_environment_variables = {
@@ -131,6 +134,7 @@ resource "azurerm_container_group" "main" {
 
     environment_variables = {
       PUBLIC_DOMAIN = var.public_domain
+      CADDY_LOG_LEVEL = "INFO"
     }
   }
 
