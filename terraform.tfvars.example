@@ -1,0 +1,28 @@
+# Azure Resource Configuration
+resource_group_name     = "your-existing-resource-group-name"
+location               = "East US"
+
+# Container Registry and Identity
+container_registry_name = "your-existing-acr-name"
+managed_identity_name   = "your-existing-managed-identity-name"
+
+# PostgreSQL Configuration
+postgresql_admin_username = "sqladmin"
+# postgresql_admin_password = "YourSecurePassword123!"  # Leave commented to auto-generate
+postgresql_database_name  = "sonarqube"
+
+# Domain Configuration
+public_domain = "your-domain.com"
+
+# Environment and Project
+environment  = "prod"
+project_name = "sonarqube"
+
+# Container Resource Allocation
+sonarqube_cpu    = 2
+sonarqube_memory = 4
+caddy_cpu        = 0.5
+caddy_memory     = 1
+
+# Monitoring
+log_analytics_retention_days = 30
