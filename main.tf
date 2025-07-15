@@ -40,7 +40,7 @@ resource "azurerm_log_analytics_workspace" "main" {
 
 # PostgreSQL Flexible Server
 resource "azurerm_postgresql_flexible_server" "main" {
-  name                = "${var.project_name}-${var.environment}-psql"
+  name                = "${var.project_name}-${var.environment}-psql-${random_id.postgresql_suffix.hex}"
   resource_group_name = data.azurerm_resource_group.main.name
   location            = data.azurerm_resource_group.main.location
   version             = "13"
@@ -156,6 +156,10 @@ resource "random_password" "dns_suffix" {
   length  = 6
   special = false
   upper   = false
+}
+
+resource "random_id" "postgresql_suffix" {
+  byte_length = 4
 }
 
 # Diagnostic setting for container group logs
