@@ -105,6 +105,7 @@ Container logs and metrics are automatically sent to the Log Analytics workspace
 2. **Database connection issues**: Verify PostgreSQL firewall rules
 3. **Image pull errors**: Ensure managed identity has ACR pull permissions
 4. **Memory issues**: Increase container memory allocation in variables
+5. **Container restart loops**: Containers are configured with restart policy "Never" to prevent automatic restarts on failure. Check Log Analytics workspace for detailed logs to diagnose startup issues.
 
 ## Cleanup
 
