@@ -136,6 +136,7 @@ resource "azurerm_storage_share_file" "sonar_properties" {
   name                 = "sonar.properties"
   storage_share_id     = azurerm_storage_share.sonarqube_conf.url
   source               = "${path.module}/sonar.properties"
+  content_md5          = filemd5("${path.module}/sonar.properties")
 
   depends_on = [azurerm_storage_share.sonarqube_conf]
 }
@@ -145,6 +146,7 @@ resource "azurerm_storage_share_file" "caddyfile" {
   name                 = "Caddyfile"
   storage_share_id     = azurerm_storage_share.caddy_config.url
   source               = "${path.module}/Caddyfile"
+  content_md5          = filemd5("${path.module}/Caddyfile")
 
   depends_on = [azurerm_storage_share.caddy_config]
 }
@@ -171,11 +173,6 @@ resource "azurerm_container_group" "main" {
     cpu    = var.sonarqube_cpu
     memory = var.sonarqube_memory
 
-    ports {
-      port     = 9000
-      protocol = "TCP"
-    }
-
     environment_variables = {
       SONAR_JDBC_URL                  = "jdbc:postgresql://${azurerm_postgresql_flexible_server.main.fqdn}:5432/${var.postgresql_database_name}?sslmode=require"
       SONAR_JDBC_USERNAME             = var.postgresql_admin_username
@@ -184,6 +181,8 @@ resource "azurerm_container_group" "main" {
       SONAR_SEARCH_JAVAADDITIONALOPTS = "-Dnode.store.allow_mmap=false"
       SONAR_LOG_LEVEL                 = "INFO"
       SONAR_LOG_JSONOUTPUT            = "true"
+      SONAR_CORE_SERVERBASEURL        = "https://${var.public_domain}"
+      SONARPROPERTIESHASH             = filemd5("${path.module}/sonar.properties")
     }
 
     secure_environment_variables = {
@@ -245,8 +244,9 @@ resource "azurerm_container_group" "main" {
     }
 
     environment_variables = {
-      PUBLIC_DOMAIN   = var.public_domain
-      CADDY_LOG_LEVEL = "INFO"
+      PUBLIC_DOMAIN     = var.public_domain
+      CADDY_LOG_LEVEL   = "INFO"
+      CADDYFILE_VERSION = filemd5("${path.module}/Caddyfile")
     }
 
     volume {
@@ -280,8 +280,8 @@ resource "azurerm_container_group" "main" {
   }
 
   tags = {
-    Environment = var.environment
-    Project     = var.project_name
+    Environment     = var.environment
+    Project         = var.project_name
   }
 }
 
@@ -310,7 +310,7 @@ resource "azurerm_monitor_diagnostic_setting" "container_group" {
     category = "ContainerEvent"
   }
 
-  enabled_metric {
+  metric {
     category = "AllMetrics"
   }
 }

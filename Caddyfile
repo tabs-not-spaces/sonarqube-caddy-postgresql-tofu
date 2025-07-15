@@ -7,5 +7,5 @@
 }
 
 sq.powers-hell.com {
-    reverse_proxy sonarqube:9000
+    reverse_proxy localhost:9000
 }
