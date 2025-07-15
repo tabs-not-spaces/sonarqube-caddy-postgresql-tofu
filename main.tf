@@ -133,18 +133,18 @@ resource "azurerm_storage_share" "caddy_data" {
 
 # Upload sonar.properties file to the conf share
 resource "azurerm_storage_share_file" "sonar_properties" {
-  name                 = "sonar.properties"
-  storage_share_id     = azurerm_storage_share.sonarqube_conf.url
-  source               = "${path.module}/sonar.properties"
+  name             = "sonar.properties"
+  storage_share_id = azurerm_storage_share.sonarqube_conf.url
+  source           = "${path.module}/sonar.properties"
 
   depends_on = [azurerm_storage_share.sonarqube_conf]
 }
 
 # Upload Caddyfile to the Caddy config share
 resource "azurerm_storage_share_file" "caddyfile" {
-  name                 = "Caddyfile"
-  storage_share_id     = azurerm_storage_share.caddy_config.url
-  source               = "${path.module}/Caddyfile"
+  name             = "Caddyfile"
+  storage_share_id = azurerm_storage_share.caddy_config.url
+  source           = "${path.module}/Caddyfile"
 
   depends_on = [azurerm_storage_share.caddy_config]
 }
@@ -155,6 +155,12 @@ resource "random_id" "storage_suffix" {
 }
 
 # Container Instance Group
+# IMPORTANT: Azure Container Instances infrastructure varies by region and SKU.
+# If experiencing "exec format error" with ARM64 images, the issue is likely that 
+# ACI is running on x86_64 infrastructure. Solutions:
+# 1. Build container images as multi-platform supporting both linux/amd64 and linux/arm64
+# 2. Rebuild images specifically for linux/amd64 architecture
+# 3. Verify ACI region supports ARM64 architecture for the selected SKU
 resource "azurerm_container_group" "main" {
   name                = "${var.project_name}-${var.environment}-aci"
   location            = data.azurerm_resource_group.main.location
@@ -163,6 +169,9 @@ resource "azurerm_container_group" "main" {
   dns_name_label      = "${var.project_name}-${var.environment}-${random_password.dns_suffix.result}"
   os_type             = "Linux"
   restart_policy      = "Never"
+  
+  # Use Standard SKU for broader platform compatibility
+  sku = "Standard"
 
   # SonarQube container
   container {
