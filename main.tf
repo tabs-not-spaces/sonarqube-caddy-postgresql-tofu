@@ -155,8 +155,12 @@ resource "random_id" "storage_suffix" {
 }
 
 # Container Instance Group
-# Note: If experiencing "exec format error", ensure container images in ACR are built as 
-# multi-platform images supporting both x86_64 and ARM64 architectures
+# IMPORTANT: Azure Container Instances infrastructure varies by region and SKU.
+# If experiencing "exec format error" with ARM64 images, the issue is likely that 
+# ACI is running on x86_64 infrastructure. Solutions:
+# 1. Build container images as multi-platform supporting both linux/amd64 and linux/arm64
+# 2. Rebuild images specifically for linux/amd64 architecture
+# 3. Verify ACI region supports ARM64 architecture for the selected SKU
 resource "azurerm_container_group" "main" {
   name                = "${var.project_name}-${var.environment}-aci"
   location            = data.azurerm_resource_group.main.location
@@ -164,9 +168,9 @@ resource "azurerm_container_group" "main" {
   ip_address_type     = "Public"
   dns_name_label      = "${var.project_name}-${var.environment}-${random_password.dns_suffix.result}"
   os_type             = "Linux"
-  restart_policy      = "OnFailure"
-
-  # Explicitly specify SKU to ensure consistent infrastructure
+  restart_policy      = "Never"
+  
+  # Use Standard SKU for broader platform compatibility
   sku = "Standard"
 
   # SonarQube container
