@@ -1,0 +1,11 @@
+{
+    # Global options block. Entirely optional, https is on by default
+    # Optional email key for lets encrypt
+    email ben@powers-hell.com
+    # Optional staging lets encrypt for testing. Comment out for production.
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+sq.powers-hell.com {
+    reverse_proxy sonarqube:9000
+}
