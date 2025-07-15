@@ -155,6 +155,8 @@ resource "random_id" "storage_suffix" {
 }
 
 # Container Instance Group
+# Note: If experiencing "exec format error", ensure container images in ACR are built as 
+# multi-platform images supporting both x86_64 and ARM64 architectures
 resource "azurerm_container_group" "main" {
   name                = "${var.project_name}-${var.environment}-aci"
   location            = data.azurerm_resource_group.main.location
